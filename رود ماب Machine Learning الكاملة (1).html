@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>رود ماب Machine Learning الكاملة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f3ee;--ink:#1b1b1d;--muted:#6d6a63;--line:#e0dbd0;--card:#fff;--ok:#1f8a5b;--c:#3b6fd8}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Arabic",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+.mono{font-family:"JetBrains Mono",monospace}
+.hidden{display:none!important}
+
+/* ---------- MAP ---------- */
+#mapView .wrap{max-width:1000px;margin:0 auto;padding:40px 20px 80px}
+.hero{text-align:center}
+.hero .kicker{font-size:12.5px;letter-spacing:.1em;color:var(--muted);font-weight:700}
+.hero h1{font-size:clamp(30px,5vw,52px);margin:8px 0 10px;line-height:1.15}
+.hero h1 span{font-family:"JetBrains Mono",monospace;font-weight:500}
+.hero p{color:var(--muted);max-width:600px;margin:0 auto;line-height:1.8}
+.dash{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px 24px;margin:28px auto 0;max-width:720px}
+.ring{width:108px;height:108px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .v{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:24px}
+.ring .v small{display:block;font-size:11px;color:var(--muted);font-weight:500;text-align:center;margin-top:-4px}
+.dstats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dstats div{background:var(--bg);border-radius:12px;padding:10px 12px}
+.dstats b{display:block;font-size:20px}
+.dstats span{font-size:12.5px;color:var(--muted)}
+.dactions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{border:0;background:var(--ink);color:#fff;border-radius:12px;padding:10px 18px;font-weight:600;font-size:14px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--muted);text-decoration:underline;padding:10px 6px;font-weight:500;font-size:13px}
+.dactions .note{font-size:12.5px;color:var(--muted);margin-inline-start:auto}
+
+.legend{text-align:center;color:var(--muted);font-size:13px;margin:34px 0 6px}
+#track{position:relative;margin-top:10px}
+#track svg.path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.station{position:relative;height:250px;display:flex;justify-content:center;align-items:center}
+.station .node{position:relative;transform:translateX(var(--dx));display:flex;align-items:center;gap:26px;flex-direction:var(--dir)}
+.hex{width:220px;height:190px;clip-path:polygon(24% 0,76% 0,100% 50%,76% 100%,24% 100%,0 50%);background:var(--c);color:#fff;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 40px;position:relative;transition:transform .2s,filter .2s}
+.hex:hover{transform:scale(1.05);filter:brightness(1.08)}
+.hex::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(0,0,0,.1))}
+.hex>*{position:relative}
+.hex .num{font-family:"JetBrains Mono",monospace;font-size:12px;opacity:.85}
+.hex h2{margin:3px 0 8px;font-size:19px;line-height:1.3}
+.hex .hb{width:110px;height:6px;border-radius:9px;background:rgba(0,0,0,.22);overflow:hidden}
+.hex .hb i{display:block;height:100%;background:#fff;border-radius:9px}
+.hex .hp{font-size:12px;margin-top:5px;font-weight:600}
+.hex.full::after{content:"✓";position:absolute;top:16px;left:50%;transform:translateX(-50%);background:#fff;color:var(--ok);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700}
+.info{width:230px;font-size:13px;line-height:1.75;color:var(--muted)}
+.info b{color:var(--ink);font-size:14.5px;display:block}
+.info .pill{display:inline-block;background:color-mix(in srgb,var(--c) 12%,#fff);color:color-mix(in srgb,var(--c) 75%,#000);border-radius:99px;padding:1px 10px;font-size:12px;font-weight:600;margin-top:4px}
+.info .open{display:inline-block;margin-top:6px;color:var(--c);font-weight:700;cursor:pointer;background:none;border:0;padding:0}
+.goal{text-align:center;margin-top:10px}
+.goal div{display:inline-block;background:var(--ink);color:#fff;border-radius:18px;padding:18px 28px;font-size:18px;font-weight:700}
+.goal small{display:block;font-weight:400;font-size:13px;opacity:.75;margin-top:4px}
+
+/* ---------- STAGE VIEW ---------- */
+#stageView{min-height:100vh}
+.sbar{position:sticky;top:0;z-index:5;background:var(--c);color:#fff}
+.sbar .in{max-width:1240px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.sbar .back{background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:600}
+.sbar .back:hover{background:rgba(255,255,255,.28)}
+.sbar .ttl{flex:1;min-width:200px}
+.sbar .ttl small{opacity:.85;font-size:12.5px}
+.sbar .ttl h2{margin:0;font-size:22px}
+.sbar .sp{min-width:180px}
+.sbar .sp .t{font-size:12.5px;display:flex;justify-content:space-between;margin-bottom:5px}
+.sbar .sp .b{height:8px;border-radius:9px;background:rgba(0,0,0,.25);overflow:hidden}
+.sbar .sp .b i{display:block;height:100%;background:#fff;border-radius:9px;transition:width .3s}
+.sbar .nav{display:flex;gap:6px}
+.sbar .nav button{background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:16px}
+.sbar .nav button:disabled{opacity:.35;cursor:default}
+
+.layout{max-width:1240px;margin:0 auto;padding:24px 20px 80px;display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:start}
+aside{position:sticky;top:90px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:10px}
+aside .meta{font-size:12.5px;color:var(--muted);padding:8px 10px 10px;border-bottom:1px solid var(--line);margin-bottom:6px;line-height:1.7}
+.ti{display:flex;align-items:center;gap:10px;width:100%;text-align:start;background:none;border:0;border-radius:12px;padding:10px;cursor:pointer}
+.ti:hover{background:var(--bg)}
+.ti.active{background:color-mix(in srgb,var(--c) 11%,#fff)}
+.ti .mini{width:30px;height:30px;flex:none;position:relative}
+.ti .mini svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ti .mini span{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;font-weight:700}
+.ti .nm{flex:1;font-size:14px;font-weight:600;line-height:1.35}
+.ti .nm small{display:block;font-weight:400;color:var(--muted);font-size:11.5px}
+.ti.cap{margin-top:6px;border-top:1px dashed var(--line);border-radius:0 0 12px 12px;padding-top:12px}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 28px}
+.ph{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.ph h3{margin:0;font-size:26px;flex:1}
+.ph .kick{font-size:12.5px;color:var(--c);font-weight:700}
+.pbar{margin:14px 0 4px;height:8px;border-radius:9px;background:#eee9df;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--ok);border-radius:9px;transition:width .3s}
+.ptxt{font-size:12.5px;color:var(--muted)}
+.sec{margin-top:26px}
+.sec .sh{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sec .sh h4{margin:0;font-size:16px;flex:1}
+.sec .sh button{background:none;border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--muted)}
+.sec .sh button:hover{border-color:var(--ink);color:var(--ink)}
+.cl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.ci{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:#fff;transition:background .15s,border-color .15s;font-size:14px;line-height:1.45;text-align:start;width:100%}
+.ci:hover{border-color:var(--c)}
+.ci .bx{flex:none;width:20px;height:20px;border-radius:6px;border:2px solid var(--c);display:grid;place-items:center;transition:background .15s}
+.ci .bx svg{width:12px;height:12px;opacity:0}
+.ci.on{background:#f0f8f3;border-color:#c5e4d2}
+.ci.on .bx{background:var(--ok);border-color:var(--ok)}
+.ci.on .bx svg{opacity:1}
+.ci.on .tx{color:#557563;text-decoration:line-through;text-decoration-color:#9cc4ad}
+.steps{display:flex;flex-direction:column;gap:8px}
+.steps .ci .n{flex:none;width:24px;height:24px;border-radius:50%;background:color-mix(in srgb,var(--c) 12%,#fff);color:var(--c);display:grid;place-items:center;font-size:12px;font-weight:700}
+.proj{border:2px solid color-mix(in srgb,var(--c) 30%,#fff);border-radius:16px;padding:18px;background:color-mix(in srgb,var(--c) 4%,#fff)}
+.proj .pt{font-size:16px;font-weight:700;line-height:1.6}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:14px 0}
+.facts div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.6}
+.facts b{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.out{margin-top:12px;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;border:1px dashed var(--line)}
+.notes textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:14px;resize:vertical;background:#fffdf8}
+.notes textarea:focus{outline:2px solid color-mix(in srgb,var(--c) 40%,#fff);border-color:transparent}
+.pnav{display:flex;justify-content:space-between;gap:10px;margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+.pnav button{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13.5px;max-width:48%}
+.pnav button:hover{border-color:var(--ink)}
+.pnav .nx{background:var(--c);color:#fff;border-color:var(--c);margin-inline-start:auto}
+.res a{color:var(--ink);border-bottom:1px solid var(--line);text-decoration:none}
+.res{font-size:14px;line-height:2}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:12px;font-size:14px;transition:transform .3s,opacity .3s;opacity:0;z-index:20}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+@media (max-width:860px){
+  .dash{grid-template-columns:1fr;justify-items:center;text-align:center}
+  .dstats{width:100%}
+  .dactions{justify-content:center}.dactions .note{margin:0;width:100%}
+  .station{height:auto;padding:22px 0}
+  .station .node{transform:none;flex-direction:column;gap:10px}
+  .info{text-align:center;width:auto;max-width:300px}
+  #track svg.path{display:none}
+  #track::before{content:"";position:absolute;top:0;bottom:0;left:50%;border-left:3px dashed var(--line)}
+  .station .node{background:var(--bg);padding:6px 0}
+  .layout{grid-template-columns:1fr;padding:14px 12px 60px}
+  aside{position:static;display:flex;overflow-x:auto;gap:6px;padding:8px}
+  aside .meta{display:none}
+  .ti{flex:none;width:auto;max-width:220px;background:var(--bg)}
+  .ti.cap{margin:0;border:0;border-radius:12px;padding-top:10px}
+  .panel{padding:18px 16px}
+  .ph h3{font-size:21px}
+  .sbar .sp{order:5;width:100%}
+}
+</style>
+</head>
+<body>
+
+<div id="mapView">
+  <div class="wrap">
+    <div class="hero">
+      <div class="kicker">ROADMAP · من الصفر للاحتراف</div>
+      <h1>رود ماب <span>Machine Learning</span></h1>
+      <p>10 مراحل على الطريق. دوسي على أي مرحلة علشان تفتح مواضيعها، وجوه كل موضوع checklist تعلّمي فيها نقطة نقطة على قد ما بتذاكري.</p>
+    </div>
+    <div class="dash">
+      <div class="ring" id="ring"></div>
+      <div class="dstats" id="dstats"></div>
+      <div class="dactions">
+        <button class="btn" id="resume" type="button">▶ كمّلي من حيث وقفتي</button>
+        <span class="note">التقدم بيتحفظ على المتصفح ده · <button class="btn ghost" id="reset" type="button">ابدأ من الأول</button></span>
+      </div>
+    </div>
+    <div class="legend">⏱ المدد تقريبية لو بتذاكري 2-3 ساعات يوميًا</div>
+    <div id="track"></div>
+    <div class="goal"><div>🎯 ML Engineer / Data Scientist جاهزة للشغل<small>وبعدها: اتعمقي، اقرأي أبحاث، وابني حاجات حقيقية</small></div></div>
+  </div>
+</div>
+
+<div id="stageView" class="hidden">
+  <div class="sbar"><div class="in">
+    <button class="back" id="back" type="button">→ الخريطة</button>
+    <div class="ttl"><small id="sNum"></small><h2 id="sTitle"></h2></div>
+    <div class="sp"><div class="t"><span>تقدم المرحلة</span><span id="sPct"></span></div><div class="b"><i id="sBar"></i></div></div>
+    <div class="nav"><button id="prevS" type="button" title="المرحلة اللي قبل">→</button><button id="nextS" type="button" title="المرحلة اللي بعد">←</button></div>
+  </div></div>
+  <div class="layout">
+    <aside id="aside"></aside>
+    <div class="panel" id="panel"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STAGES = [
+  { t:"الأساسيات البرمجية", c:"#3b6fd8", lvl:"مبتدئ", d:"6 - 8 أسابيع",
+    topics:[
+      ["Python الأساسي",["Variables & Data types","Operators","Strings و f-strings","if / elif / else","for و while loops","Functions & Arguments","Lists","Tuples","Dictionaries","Sets","Input / Output","Modules و import"],"آلة حاسبة + لعبة تخمين رقم بتعدّ المحاولات."],
+      ["Python المتقدم",["Classes & Objects","Inheritance","Polymorphism","Magic methods","Comprehensions","Lambda / map / filter","Iterators & Generators","Decorators","Exceptions","File handling (txt / csv / json)","Type hints"],"نظام إدارة مكتبة بالـ Classes بيحفظ البيانات في ملف JSON."],
+      ["Data Structures & Algorithms",["Big-O","Arrays & Lists","Stacks & Queues","Hash maps","Linked lists","Trees","Recursion","Sorting","Binary search"],"حل 30 مسألة Easy على LeetCode وتكتب شرح لكل حل."],
+      ["بيئة العمل",["Jupyter Notebook","Google Colab","VS Code","pip","venv / conda","requirements.txt","Kaggle Notebooks"],"تجهّز بيئة conda فيها كل مكتبات الداتا وتشغّل notebook عليها."],
+      ["Git و GitHub",["init / add / commit","push / pull / clone","Branches & merge","Merge conflicts","Pull Requests",".gitignore","README بـ Markdown"],"Repo منظم فيه كل مشاريعك وكل واحد بـ README."],
+      ["سطر الأوامر Linux",["ls / cd / mkdir","cp / mv / rm","cat / grep / find","Permissions و chmod","Pipes","Environment variables","SSH"],"Bash script بيرتّب ملفات أي فولدر حسب نوعها."],
+      ["SQL",["SELECT / WHERE","ORDER BY / LIMIT","Aggregations","GROUP BY / HAVING","JOINs","Subqueries","CTEs","Window functions","SQLite / PostgreSQL"],"تحلّل داتابيز مبيعات وتجاوب على 10 أسئلة بزنس بالـ SQL."]
+    ],
+    project:"سكريبت Python يقرأ ملف CSV ويطلع منه تقرير إحصائيات، والكود كله على GitHub.",
+    res:[["Python for Everybody","https://www.py4e.com"],["Kaggle Learn","https://www.kaggle.com/learn"],["SQLBolt","https://sqlbolt.com"]]
+  },
+  { t:"الرياضيات", c:"#7a4fd0", lvl:"مبتدئ", d:"8 - 10 أسابيع (بالتوازي)",
+    topics:[
+      ["الجبر الخطي",["Scalars / Vectors / Matrices","Vector operations","Dot product","Matrix multiplication","Transpose & Inverse","Determinant","Rank","Linear independence","Eigenvalues & Eigenvectors","SVD","Norms (L1 / L2)","Projections"],"تنفّذ PCA بإيدك بـ NumPy عن طريق Eigen decomposition."],
+      ["التفاضل والتكامل",["Limits","Derivatives","قواعد الاشتقاق","Chain Rule","Partial derivatives","Gradient","Jacobian","Hessian","Integrals (أساسيات)","Taylor series"],"تحسب المشتقات عدديًا وتقارنها بالحل التحليلي."],
+      ["الاحتمالات",["Sample space & Events","Conditional probability","Bayes' Theorem","Independence","Random variables","PMF / PDF / CDF","Bernoulli / Binomial","Poisson","Uniform","Normal (Gaussian)","Expectation & Variance","Covariance","Joint distributions"],"Spam filter بسيط بـ Bayes من الصفر."],
+      ["الإحصاء",["Mean / Median / Mode","Variance & Std","Percentiles","Sampling","Central Limit Theorem","Confidence intervals","Hypothesis testing","p-value","t-test","Chi-square","ANOVA","A/B testing","Correlation vs Causation","MLE"],"تحليل A/B test على داتا حقيقية وتطلع منه قرار."],
+      ["Optimization",["Cost function","Gradient Descent","Learning rate","SGD & Mini-batch","Momentum","Convex functions","Local vs Global minima","Saddle points","Lagrange multipliers"],"Gradient Descent من الصفر وترسم مساره على contour plot."],
+      ["Information Theory",["Entropy","Cross-Entropy","KL Divergence","Mutual Information"],"تحسب Entropy لأعمدة داتا سيت وتشرح معناها."]
+    ],
+    project:"Notebook بيشرح الرياضيات ورا Linear Regression: من المعادلات لحد كود NumPy.",
+    res:[["3Blue1Brown","https://www.3blue1brown.com"],["StatQuest","https://www.youtube.com/@statquest"],["Khan Academy","https://www.khanacademy.org/math"]]
+  },
+  { t:"التعامل مع البيانات", c:"#0e8f8a", lvl:"مبتدئ", d:"5 - 6 أسابيع",
+    topics:[
+      ["NumPy",["ndarray","dtypes","Indexing & Slicing","Boolean masking","Reshape","Broadcasting","Vectorization","Aggregations","np.random","np.linalg"],"تعالج صورة كـ Array: قص، قلب، وتحويل لـ grayscale."],
+      ["Pandas",["Series & DataFrame","read_csv / excel / sql","loc / iloc","Filtering","groupby","merge / join / concat","pivot_table","apply / map","String methods","Datetime","rolling windows"],"تحليل داتا مبيعات وتقرير شهري بالأرقام."],
+      ["Visualization",["Matplotlib","Seaborn","Plotly","Histogram","Box plot","Scatter","Heatmap","Pair plot","اختيار الرسم المناسب"],"Dashboard تفاعلي بـ Plotly لداتا سيت تختارها."],
+      ["EDA",["Univariate analysis","Bivariate analysis","Distributions & Skewness","Correlation","Outliers","Target analysis","ydata-profiling"],"EDA كامل على Titanic بالاستنتاجات."],
+      ["Data Cleaning",["Missing values","Imputation","Duplicates","Data types","Outlier treatment","Text cleaning","Inconsistent categories"],"تنضّف داتا سيت مليانة مشاكل وتوثّق كل خطوة."],
+      ["جمع البيانات",["REST APIs (requests)","JSON","Web Scraping بـ BeautifulSoup","Selenium","Kaggle / UCI datasets"],"Scraper بيجمع أسعار منتجات من موقع ويحلّلها."]
+    ],
+    project:"EDA كامل على داتا سيت House Prices مع رسومات وقصة واضحة للنتائج.",
+    res:[["Kaggle Pandas","https://www.kaggle.com/learn/pandas"],["Kaggle Datasets","https://www.kaggle.com/datasets"]]
+  },
+  { t:"أساسيات ML", c:"#2f8f3e", lvl:"مبتدئ ← متوسط", d:"4 أسابيع",
+    topics:[
+      ["أنواع التعلم",["Supervised","Unsupervised","Semi-supervised","Self-supervised","Reinforcement","Classification vs Regression"],"تصنّف 10 مشاكل حقيقية حسب نوع التعلم المناسب ليها."],
+      ["تقسيم البيانات والتحقق",["Train / Val / Test","Stratified split","K-Fold Cross-Validation","Time series split","Data Leakage"],"تقارن نتيجة موديل مع Leakage وبدونه."],
+      ["Bias - Variance",["Underfitting","Overfitting","Bias-Variance tradeoff","Learning curves","Validation curves","Regularization"],"ترسم Learning curves لموديلات بدرجات تعقيد مختلفة."],
+      ["Metrics التصنيف",["Confusion Matrix","Accuracy","Precision","Recall","F1","ROC & AUC","PR curve","Threshold tuning","Log loss"],"موديل كشف احتيال وتختار الـ threshold المناسب."],
+      ["Metrics الانحدار",["MAE","MSE","RMSE","R²","MAPE","Residual analysis"],"تحليل Residuals لموديل أسعار."],
+      ["Feature Engineering",["Standard / MinMax Scaling","One-hot encoding","Label / Ordinal encoding","Target encoding","Binning","Polynomial features","Date features","Feature selection","Imbalanced data (SMOTE)","Class weights"],"تحسّن موديل بالـ Feature Engineering وتقيس الفرق."],
+      ["Scikit-learn",["fit / predict","Transformers","Pipeline","ColumnTransformer","cross_val_score","GridSearchCV","RandomizedSearchCV","حفظ الموديل بـ joblib"],"Pipeline كامل محفوظ كملف وجاهز للاستخدام."]
+    ],
+    project:"Pipeline كامل في scikit-learn من التنظيف لحد التقييم بـ Cross-Validation.",
+    res:[["Andrew Ng ML Specialization","https://www.coursera.org/specializations/machine-learning-introduction"],["scikit-learn guide","https://scikit-learn.org/stable/user_guide.html"]]
+  },
+  { t:"Supervised Learning", c:"#c9821b", lvl:"متوسط", d:"6 - 8 أسابيع",
+    topics:[
+      ["Linear Regression",["Simple & Multiple","OLS & Normal equation","الحل بـ Gradient Descent","Assumptions","Polynomial regression","Ridge (L2)","Lasso (L1)","Elastic Net"],"توقع أسعار بيوت، مرة بـ sklearn ومرة من الصفر."],
+      ["Logistic Regression",["Sigmoid","Log Loss","Decision boundary","Regularization","One-vs-Rest","Softmax"],"توقع الإصابة بالسكر من بيانات طبية."],
+      ["KNN",["Distance metrics","اختيار K","Curse of dimensionality","أهمية الـ Scaling"],"تصنيف أرقام MNIST بـ KNN."],
+      ["Naive Bayes",["Gaussian NB","Multinomial NB","Bernoulli NB","Laplace smoothing"],"تصنيف رسايل Spam."],
+      ["SVM",["Hyperplane & Margin","Support vectors","Soft margin (C)","Kernel trick","RBF / Polynomial","SVR"],"مقارنة kernels مختلفة على نفس الداتا."],
+      ["Decision Trees",["Gini","Entropy & Information gain","Splitting","max_depth","Pruning","Feature importance","Regression trees"],"موديل موافقة قروض قابل للتفسير وترسم الشجرة."],
+      ["Ensemble Methods",["Bagging","Random Forest","OOB score","Boosting","AdaBoost","Voting","Stacking"],"تقارن شجرة واحدة مع Random Forest."],
+      ["Gradient Boosting",["GBM concept","XGBoost","LightGBM","CatBoost","Early stopping","Categorical features"],"تشارك في مسابقة Kaggle على داتا جدولية."],
+      ["Tuning والتفسير",["Grid / Random search","Optuna","SHAP","Permutation importance","Partial dependence"],"تفسّر موديل Churn بـ SHAP."]
+    ],
+    project:"مشروعين: أسعار بيوت (Regression) وChurn عملاء (Classification) مع مقارنة 4 موديلات على الأقل.",
+    res:[["Hands-On ML (كتاب Géron)",""],["StatQuest ML","https://www.youtube.com/@statquest"]]
+  },
+  { t:"Unsupervised Learning", c:"#d4572a", lvl:"متوسط", d:"3 - 4 أسابيع",
+    topics:[
+      ["Clustering",["K-Means","K-Means++","Hierarchical / Dendrogram","DBSCAN","Mean Shift","GMM"],"Customer Segmentation لعملاء متجر."],
+      ["تقييم الـ Clusters",["Elbow method","Silhouette score","Davies-Bouldin","تفسير الكلاسترز"],"تختار عدد الكلاسترز بـ 3 طرق وتقارن."],
+      ["Dimensionality Reduction",["PCA","Explained variance","t-SNE","UMAP","LDA","Autoencoders (لمحة)"],"تعرض MNIST في 2D بـ PCA وt-SNE وUMAP."],
+      ["Anomaly Detection",["Z-score / IQR","Isolation Forest","LOF","One-Class SVM"],"كشف معاملات بنكية مشبوهة."],
+      ["Association Rules",["Support","Confidence","Lift","Apriori","FP-Growth"],"Market Basket Analysis لسوبر ماركت."],
+      ["Recommender Systems",["Popularity-based","Content-based","Collaborative filtering","Matrix factorization / SVD","Cold start","Precision@K"],"نظام ترشيح أفلام على MovieLens."]
+    ],
+    project:"Customer Segmentation كامل مع شرح كل شريحة بالأرقام وتوصية تسويقية لكل واحدة.",
+    res:[["Kaggle Learn","https://www.kaggle.com/learn"],["scikit-learn clustering","https://scikit-learn.org/stable/modules/clustering.html"]]
+  },
+  { t:"Deep Learning", c:"#c2336a", lvl:"متوسط ← متقدم", d:"10 - 12 أسبوع",
+    topics:[
+      ["Neural Networks",["Neuron / Perceptron","MLP","Sigmoid / Tanh","ReLU / GELU","Softmax","Forward pass","Universal approximation"],"شبكة عصبية من الصفر بـ NumPy على MNIST."],
+      ["Backpropagation",["Computational graph","Chain rule","Gradients","Vanishing / Exploding gradients","Weight initialization","Autograd"],"تبني micrograd: محرك autograd صغير."],
+      ["التدريب",["MSE / Cross-Entropy","SGD","Momentum","RMSProp","Adam / AdamW","LR schedules","Batch size & Epochs","Gradient clipping"],"تقارن optimizers مختلفة على نفس الموديل."],
+      ["Regularization",["Weight decay","Dropout","Batch Norm","Layer Norm","Early stopping","Data augmentation"],"تعالج Overfitting في موديل وتوضح الفرق بالرسم."],
+      ["PyTorch",["Tensors","GPU / CUDA","autograd","nn.Module","Dataset & DataLoader","Training loop","Save / Load","TensorBoard"],"Training loop كامل لموديل تصنيف."],
+      ["CNNs",["Convolution","Filters / Kernels","Padding & Stride","Pooling","LeNet / VGG","ResNet","EfficientNet","Transfer learning","Fine-tuning"],"تصنيف أمراض أوراق النباتات بالصور."],
+      ["Sequence Models",["RNN","BPTT","LSTM","GRU","Bidirectional","Seq2Seq","Attention"],"توليد نص حرف بحرف بـ LSTM."],
+      ["Transformers",["Self-Attention","Q / K / V","Multi-head attention","Positional encoding","Encoder / Decoder","Residuals & LayerNorm","GPT architecture"],"Mini-GPT بتدرّبه على نص عربي."]
+    ],
+    project:"تصنيف صور بـ CNN وTransfer Learning، وتعمله demo يشتغل أونلاين.",
+    res:[["fast.ai","https://course.fast.ai"],["Dive into DL","https://d2l.ai"],["Karpathy: Zero to Hero","https://karpathy.ai/zero-to-hero.html"]]
+  },
+  { t:"التخصصات", c:"#9b3fb5", lvl:"متقدم · اختار 1 أو 2", d:"3 - 5 شهور",
+    topics:[
+      ["Computer Vision",["OpenCV","Image processing","Object detection: YOLO","Faster R-CNN","Semantic segmentation: U-Net","Instance segmentation","Vision Transformers","OCR","Video analysis"],"كشف وعدّ العربيات في فيديو شارع."],
+      ["NLP",["Text preprocessing","Tokenization: BPE / WordPiece","TF-IDF","Word2Vec / GloVe","Sentiment analysis","NER","Text classification","BERT","Hugging Face Transformers","Arabic NLP: AraBERT"],"تحليل مشاعر تعليقات عربية."],
+      ["LLMs و Generative AI",["إزاي الـ LLMs بتشتغل","Prompt engineering","Embeddings","Vector DBs","RAG","Fine-tuning","LoRA / QLoRA","RLHF / DPO","Evaluation","Agents & Tool use","LangChain / LlamaIndex"],"Chatbot بـ RAG بيجاوب من ملفات PDF."],
+      ["Generative Models",["Autoencoders","VAEs","GANs","DCGAN","Diffusion models","Stable Diffusion","Text-to-image"],"GAN بيولّد صور ملابس من Fashion-MNIST."],
+      ["Reinforcement Learning",["Agent / Environment / Reward","MDP","Bellman equation","Value & Policy iteration","Q-Learning","DQN","Policy Gradients","Actor-Critic","PPO","Gymnasium"],"Agent بيتعلم يلعب CartPole."],
+      ["Time Series",["Trend & Seasonality","Stationarity","ARIMA / SARIMA","Exponential smoothing","Prophet","Lag features","LSTM forecasting","Backtesting"],"توقع مبيعات أو استهلاك كهربا."],
+      ["Graph ML",["Graph basics","Node embeddings","GCN","GAT","PyTorch Geometric"],"تصنيف nodes في شبكة Cora."],
+      ["Speech & Audio",["Spectrograms","MFCC","Speech-to-text: Whisper","Text-to-speech"],"تفريغ فيديوهات عربي لنص بـ Whisper."]
+    ],
+    project:"مشروع كبير في تخصصك، مثلًا مساعد بـ RAG على ملفاتك، أو نظام detection على فيديو.",
+    res:[["Hugging Face Learn","https://huggingface.co/learn"],["CS231n","https://cs231n.stanford.edu"],["Spinning Up in RL","https://spinningup.openai.com"]]
+  },
+  { t:"MLOps والنشر", c:"#3d5a80", lvl:"متقدم", d:"5 - 6 أسابيع",
+    topics:[
+      ["Model Serving",["FastAPI","REST APIs","Pydantic","Streamlit","Gradio","Batch vs Real-time","ONNX"],"API لموديل Churn بيرجع توقع."],
+      ["Docker",["Images & Containers","Dockerfile","docker-compose","Volumes","Container registry"],"تحط الـ API بتاعتك جوه Docker."],
+      ["Experiment Tracking",["MLflow","Weights & Biases","Logging params & metrics","Model registry"],"تتابع 20 تجربة وتختار أحسن موديل."],
+      ["Data & Model Versioning",["DVC","Data pipelines","Feature stores (لمحة)","Model versioning"],"Pipeline بـ DVC تقدر تعيد تشغيله في أي وقت."],
+      ["Cloud",["AWS: S3 / EC2 / SageMaker","GCP Vertex AI","Azure ML","Hugging Face Spaces","Serverless"],"تنشر موديل على الكلاود بلينك شغال."],
+      ["Monitoring",["Data drift","Concept drift","Performance monitoring","Logging","Evidently","Retraining"],"Dashboard بيراقب الـ drift في موديل منشور."],
+      ["CI/CD والجودة",["GitHub Actions","pytest","Code quality / linting","Automated retraining"],"CI بيشغّل الـ tests ويبني Docker image مع كل push."]
+    ],
+    project:"API لموديلك جوه Docker، مع MLflow tracking وMonitoring، ومنشور أونلاين.",
+    res:[["Made With ML","https://madewithml.com"],["MLOps Zoomcamp","https://github.com/DataTalksClub/mlops-zoomcamp"]]
+  },
+  { t:"المشاريع والشغل", c:"#1c1c1e", lvl:"مستمر", d:"طول الوقت",
+    topics:[
+      ["Kaggle",["Getting Started competitions","Notebooks","Discussions","حلول الفايزين","Kaggle ranks"],"تشارك في 3 مسابقات وتنشر notebook لكل واحدة."],
+      ["Portfolio",["3 - 5 مشاريع قوية","مشاريع End-to-end","README واضح","Demo شغال","مقال عن كل مشروع"],"موقع شخصي فيه مشاريعك وروابط الـ demos."],
+      ["قراءة الأبحاث",["arXiv","إزاي تقرأ paper","Attention Is All You Need","ResNet","BERT / GPT papers","تنفيذ paper"],"تنفّذ paper من الصفر وتكتب عنه مقال."],
+      ["المجتمع",["LinkedIn","كتابة مقالات","Open source","Meetups و Communities"],"5 مقالات تشرح فيها حاجات اتعلمتها."],
+      ["التحضير للمقابلات",["ML theory","ML System Design","Coding / LeetCode","Case studies","Behavioral","CV"],"3 Mock interviews مع حد في المجال."]
+    ],
+    project:"Portfolio فيه أحسن 3-5 مشاريع، وCV بيوضح كل مشروع حل مشكلة إيه.",
+    res:[["Kaggle Competitions","https://www.kaggle.com/competitions"],["arXiv","https://arxiv.org"]]
+  }
+];
+// تفاصيل مشاريع المواضيع: key = "stage-topic"
+const PD = {
+"0-0":{data:"مفيش داتا، input من المستخدم",tools:"Python فقط",steps:["اعمل قائمة عمليات (+ − × ÷) واطلب من المستخدم يختار","اكتب كل عملية في function لوحدها وتعامل مع القسمة على صفر","في لعبة التخمين: random.randint يختار رقم وانت تقول أعلى/أقل","احسب عدد المحاولات واسأل المستخدم لو عايز يلعب تاني"],out:"ملفين .py شغالين من الـ terminal"},
+"0-1":{data:"ملف books.json بتعمله بنفسك",tools:"Python, json",steps:["اعمل Class اسمه Book (عنوان، مؤلف، متاح ولا لأ)","اعمل Class اسمه Library فيه add / remove / search / borrow","احفظ وحمّل البيانات من JSON عند البداية والنهاية","ضيف Exceptions لو الكتاب مش موجود أو مستعار"],out:"برنامج مكتبة كامل بقائمة أوامر"},
+"0-2":{data:"مسائل LeetCode (Easy)",tools:"Python, LeetCode",steps:["ابدأ بمسائل Arrays و Hash maps","بعدها Stacks و Two pointers و Binary search","اكتب الـ Big-O لكل حل","ارفع الحلول على GitHub مع شرح قصير لكل مسألة"],out:"Repo فيه 30 حل مشروح"},
+"0-3":{data:"أي ملف CSV صغير",tools:"conda, Jupyter, VS Code",steps:["نزّل Miniconda واعمل environment اسمها ml","ثبّت numpy pandas matplotlib scikit-learn jupyter","اعمل requirements.txt أو environment.yml","افتح notebook واقرأ الـ CSV وارسم رسمة بسيطة"],out:"بيئة جاهزة + ملف environment.yml"},
+"0-4":{data:"مشاريعك السابقة",tools:"Git, GitHub",steps:["اعمل repo لكل مشروع أو repo واحد بفولدرات","اكتب README فيه: المشكلة، الحل، إزاي تشغّله، صورة للنتيجة","جرّب تعمل branch تعدّل فيها وتعمل Pull Request وتعمله merge","ضيف .gitignore مناسب لـ Python"],out:"بروفايل GitHub منظم"},
+"0-5":{data:"فولدر Downloads فيه ملفات متنوعة",tools:"Bash",steps:["لف على كل الملفات بـ for loop","اقرأ الامتداد (pdf, jpg, csv…)","اعمل فولدر لكل نوع لو مش موجود وانقل الملف","اطبع ملخص: كام ملف اتنقل لكل فولدر"],out:"سكريبت organize.sh"},
+"0-6":{data:"Chinook أو Northwind sample database",tools:"SQLite / PostgreSQL",steps:["حمّل الداتابيز وافهم الجداول والعلاقات بينها","اكتب أسئلة: أكتر منتج بيتباع، أحسن عميل، المبيعات لكل شهر","استخدم JOIN و GROUP BY و Window functions","اكتب الإجابات والـ queries في ملف واحد منظم"],out:"ملف .sql + تقرير بالنتائج"},
+"1-0":{data:"Iris dataset",tools:"NumPy, Matplotlib",steps:["اعمل centering للداتا (اطرح المتوسط)","احسب Covariance matrix","طلّع Eigenvalues و Eigenvectors بـ np.linalg.eig","اضرب الداتا في أكبر 2 eigenvectors وارسمها، وقارن بـ sklearn PCA"],out:"Notebook PCA من الصفر"},
+"1-1":{data:"دوال رياضية بتكتبها",tools:"NumPy, SymPy",steps:["اكتب numerical derivative بطريقة (f(x+h)-f(x-h))/2h","احسب المشتقة التحليلية بـ SymPy","قارن الاتنين لقيم h مختلفة وارسم الخطأ","طبّق نفس الفكرة على gradient لدالة في متغيرين"],out:"Notebook مقارنة"},
+"1-2":{data:"SMS Spam Collection (UCI)",tools:"Python, Pandas",steps:["قسّم الرسايل لكلمات وعدّ كل كلمة في spam و ham","احسب P(word | spam) و P(word | ham) مع Laplace smoothing","استخدم Bayes علشان تحسب احتمال إن الرسالة spam","قيس الـ accuracy على test set"],out:"Spam filter من غير sklearn"},
+"1-3":{data:"Marketing A/B Testing dataset (Kaggle)",tools:"Pandas, SciPy",steps:["حدّد الـ Null والـ Alternative hypothesis","احسب conversion rate لكل group","اعمل t-test أو Chi-square واحسب الـ p-value","اكتب قرار بزنس واضح مع Confidence interval"],out:"تقرير A/B test"},
+"1-4":{data:"دالة زي f(x,y)=x²+3y²",tools:"NumPy, Matplotlib",steps:["اكتب الـ gradient للدالة","نفّذ loop: تحديث x,y بـ learning rate","ارسم contour plot وعليه مسار النقط","جرّب learning rates مختلفة ولاحظ التذبذب والـ divergence"],out:"رسمة مسار GD لكذا learning rate"},
+"1-5":{data:"Titanic",tools:"NumPy, Pandas",steps:["اكتب function بتحسب Entropy لعمود","احسبها لكل عمود categorical","احسب Information gain لكل عمود بالنسبة لـ Survived","رتّب الأعمدة واشرح ليه دي أهم feature"],out:"جدول Entropy و Information Gain"},
+"2-0":{data:"أي صورة jpg",tools:"NumPy, Pillow, Matplotlib",steps:["حمّل الصورة كـ array واطبع الـ shape","اقصّها بالـ slicing واقلبها بـ [::-1]","حوّلها لـ grayscale بمتوسط موزون للـ RGB","زوّد السطوع بالـ broadcasting واعرض النتايج جنب بعض"],out:"Notebook معالجة صور بـ NumPy بس"},
+"2-1":{data:"Superstore Sales (Kaggle)",tools:"Pandas",steps:["نضّف التواريخ وحوّلها لـ datetime","احسب المبيعات والربح لكل شهر ولكل فئة","اعمل pivot_table للمناطق × الفئات","طلّع أحسن وأسوأ 10 منتجات"],out:"تقرير شهري في notebook"},
+"2-2":{data:"Superstore أو World Happiness",tools:"Plotly",steps:["اختار 4 - 5 أسئلة مهمة","ارسم لكل سؤال الرسم المناسب","ضيف فلاتر (dropdown) للتفاعل","رتّب الرسومات في صفحة HTML واحدة"],out:"Dashboard HTML تفاعلي"},
+"2-3":{data:"Titanic",tools:"Pandas, Seaborn",steps:["افحص كل عمود لوحده (توزيع، قيم ناقصة)","قارن كل عمود بـ Survived","دوّر على علاقات: السن × الدرجة × النوع","اكتب 5 استنتاجات بالأرقام"],out:"Notebook EDA مكتوب كقصة"},
+"2-4":{data:"NYC Airbnb أو أي داتا فيها مشاكل",tools:"Pandas",steps:["اعمل جرد للمشاكل: ناقص، مكرر، أنواع غلط","قرّر لكل عمود: تحذف ولا تعوّض ولا تصلّح","وحّد الـ categories المكتوبة بأشكال مختلفة","وثّق كل قرار وليه، واحفظ نسخة نضيفة"],out:"داتا نضيفة + Data cleaning log"},
+"2-5":{data:"books.toscrape.com",tools:"requests, BeautifulSoup",steps:["افحص الـ HTML وحدّد العناصر المطلوبة","اجمع الاسم والسعر والتقييم من كل الصفحات","احفظهم في CSV","حلّل: متوسط السعر لكل تقييم وارسمه"],out:"Scraper + CSV + تحليل"},
+"3-0":{data:"وصف 10 مشاكل بتكتبهم",tools:"ورقة و قلم أو Markdown",steps:["اكتب 10 مشاكل (توقع سعر، كشف احتيال، تقسيم عملاء…)","لكل مشكلة حدّد: فيه label ولا لأ؟","حدّد Classification ولا Regression ولا Clustering","اقترح metric مناسب لكل واحدة"],out:"جدول المشاكل وتصنيفها"},
+"3-1":{data:"Breast Cancer (sklearn)",tools:"scikit-learn",steps:["اعمل Scaling على الداتا كلها قبل الـ split (غلط مقصود)","درّب وقيس بالـ Cross-Validation","كرّر بـ Pipeline بحيث الـ Scaling جوه كل fold","قارن الفرق واشرح ليه ده leakage"],out:"Notebook يوضح الـ leakage"},
+"3-2":{data:"داتا مصطنعة بـ np.sin + noise",tools:"scikit-learn, Matplotlib",steps:["درّب Polynomial regression بدرجات 1 و 4 و 15","ارسم الخط فوق الداتا لكل درجة","ارسم learning curves لكل واحد","حدّد مين underfit ومين overfit"],out:"رسومات Bias-Variance"},
+"3-3":{data:"Credit Card Fraud (Kaggle)",tools:"scikit-learn",steps:["لاحظ إن الداتا imbalanced جدًا وإن الـ Accuracy مضللة","درّب Logistic Regression","ارسم PR curve و ROC curve","اختار threshold بناءً على تكلفة الـ False Negative"],out:"تحليل Thresholds"},
+"3-4":{data:"California Housing",tools:"scikit-learn",steps:["درّب Linear Regression","احسب MAE و RMSE و R²","ارسم Residuals مقابل التوقعات","اكتشف لو فيه pattern يدل إن الموديل ناقصه حاجة"],out:"Residual plots + تفسير"},
+"3-5":{data:"House Prices (Kaggle)",tools:"Pandas, scikit-learn",steps:["درّب موديل baseline على الأعمدة الرقمية بس","ضيف encoding للأعمدة النصية","اعمل features جديدة (عمر البيت، المساحة الكلية)","قارن الـ RMSE بعد كل خطوة"],out:"جدول تحسّن الأداء خطوة بخطوة"},
+"3-6":{data:"Titanic",tools:"scikit-learn, joblib",steps:["اعمل ColumnTransformer للأرقام والنصوص","حطه في Pipeline مع الموديل","GridSearchCV على الـ hyperparameters","احفظ الـ Pipeline بـ joblib وحمّله وتوقّع"],out:"ملف model.joblib جاهز"},
+"4-0":{data:"House Prices",tools:"NumPy, scikit-learn",steps:["نفّذ Linear Regression بـ Gradient Descent من الصفر","قارنه بـ LinearRegression في sklearn","جرّب Ridge و Lasso ولاحظ الـ coefficients","اختار أحسن alpha بالـ CV"],out:"موديلين ومقارنة"},
+"4-1":{data:"Pima Indians Diabetes",tools:"scikit-learn",steps:["نضّف القيم الصفرية الغلط (ضغط = 0)","درّب Logistic Regression مع Scaling","فسّر الـ coefficients: إيه أكتر عامل مؤثر","قيّم بـ Recall لأن ماينفعش نفوّت مريض"],out:"موديل + تفسير العوامل"},
+"4-2":{data:"MNIST (أو digits من sklearn)",tools:"scikit-learn",steps:["حوّل كل صورة لـ vector","جرّب K من 1 لـ 15 واختار الأحسن","اعرض أمثلة اتصنّفت غلط","قارن الوقت مع حجم الداتا"],out:"Accuracy + أمثلة الغلط"},
+"4-3":{data:"SMS Spam Collection",tools:"scikit-learn",steps:["حوّل النص لـ CountVectorizer","درّب MultinomialNB","قارن بـ BernoulliNB","اكتب function تاخد رسالة جديدة وتقول spam ولا لأ"],out:"Spam classifier"},
+"4-4":{data:"Breast Cancer أو moons (sklearn)",tools:"scikit-learn",steps:["درّب SVM بـ linear و poly و RBF kernels","ارسم الـ decision boundary على داتا 2D","جرّب قيم C و gamma مختلفة","قارن الأداء والوقت"],out:"رسومات الحدود + جدول مقارنة"},
+"4-5":{data:"Loan Prediction (Kaggle)",tools:"scikit-learn",steps:["درّب DecisionTreeClassifier","ارسم الشجرة بـ plot_tree","حدّد max_depth بالـ CV","اكتب القواعد بالعربي: لو الدخل > … يبقى …"],out:"شجرة مرسومة + قواعد مفهومة"},
+"4-6":{data:"Loan Prediction",tools:"scikit-learn",steps:["درّب Decision Tree واحدة","درّب Random Forest بعدد أشجار مختلف","قارن الـ variance بين الـ folds","اعرض Feature importance"],out:"جدول مقارنة"},
+"4-7":{data:"Playground Series أو Spaceship Titanic (Kaggle)",tools:"XGBoost, LightGBM, CatBoost",steps:["اعمل baseline بسيط وقدّمه","جرّب الـ 3 مكتبات مع early stopping","اعمل Feature engineering","اعمل submission وسجّل الـ score"],out:"Notebook منشور على Kaggle"},
+"4-8":{data:"Telco Customer Churn",tools:"Optuna, SHAP",steps:["Tuning لـ LightGBM بـ Optuna","ارسم SHAP summary plot","فسّر توقع عميل واحد بـ force plot","اكتب 3 توصيات بزنس من النتايج"],out:"تقرير تفسير الموديل"},
+"5-0":{data:"Mall Customers (Kaggle)",tools:"scikit-learn",steps:["اختار الأعمدة: الدخل والإنفاق والسن","اعمل Scaling","جرّب K-Means و Hierarchical و DBSCAN","ارسم الكلاسترز وسمّي كل شريحة"],out:"رسومات + وصف الشرائح"},
+"5-1":{data:"Mall Customers",tools:"scikit-learn",steps:["احسب Elbow لـ K من 2 لـ 10","احسب Silhouette و Davies-Bouldin","قارن اختيار الـ 3 طرق","اختار K نهائي وبرّره"],out:"جدول المقارنة"},
+"5-2":{data:"MNIST",tools:"scikit-learn, umap-learn",steps:["خد عينة 5000 صورة","اعمل PCA لـ 2D وارسمه ملوّن بالرقم","اعمل t-SNE و UMAP لنفس العينة","قارن الشكل والوقت"],out:"3 رسومات جنب بعض"},
+"5-3":{data:"Credit Card Fraud",tools:"scikit-learn",steps:["تجاهل الـ labels في التدريب","طبّق Isolation Forest و LOF","قارن اللي طلع شاذ بالـ labels الحقيقية","احسب Precision في أعلى 100 حالة"],out:"تقرير كشف الشذوذ"},
+"5-4":{data:"Groceries dataset (Kaggle)",tools:"mlxtend",steps:["حوّل المشتريات لجدول one-hot لكل فاتورة","طبّق Apriori بـ min_support مناسب","طلّع القواعد ورتّبها بالـ Lift","اقترح عروض بناءً على أقوى 5 قواعد"],out:"قائمة قواعد + اقتراحات"},
+"5-5":{data:"MovieLens 100K",tools:"Pandas, Surprise أو NumPy",steps:["ابدأ بـ Popularity baseline","اعمل Content-based بالـ genres","اعمل Collaborative filtering بـ SVD","قيّم بـ RMSE و Precision@10"],out:"function ترشّح 10 أفلام لأي مستخدم"},
+"6-0":{data:"MNIST",tools:"NumPy فقط",steps:["اكتب layer: weights و bias و forward","اكتب ReLU و Softmax و Cross-Entropy","اكتب backward pass يدويًا","درّب ووصل لـ accuracy فوق 95%"],out:"شبكة من الصفر"},
+"6-1":{data:"مفيش",tools:"Python",steps:["اعمل Class اسمه Value بيحفظ القيمة والـ gradient","عرّف + و × و tanh مع backward لكل واحدة","اعمل topological sort وطبّق backward على الكل","ابني MLP صغير بيه ودرّبه"],out:"مكتبة autograd صغيرة (زي micrograd)"},
+"6-2":{data:"Fashion-MNIST",tools:"PyTorch",steps:["ثبّت نفس الموديل ونفس الـ seed","درّب بـ SGD و Momentum و Adam و AdamW","ارسم الـ loss curves على رسمة واحدة","جرّب LR scheduler وشوف الفرق"],out:"رسمة مقارنة optimizers"},
+"6-3":{data:"CIFAR-10 (جزء صغير)",tools:"PyTorch",steps:["درّب موديل كبير على داتا قليلة لحد ما يعمل overfit","ضيف Dropout ثم BatchNorm ثم Augmentation","سجّل train/val loss بعد كل إضافة","ارسم كل التجارب مع بعض"],out:"مقارنة تقنيات الـ Regularization"},
+"6-4":{data:"Fashion-MNIST",tools:"PyTorch, TensorBoard",steps:["اعمل Dataset و DataLoader","اكتب nn.Module للموديل","اكتب training و validation loop","سجّل في TensorBoard واحفظ أحسن checkpoint"],out:"Training script نضيف وقابل لإعادة الاستخدام"},
+"6-5":{data:"PlantVillage",tools:"PyTorch, torchvision",steps:["حمّل ResNet pretrained","غيّر آخر layer لعدد الأمراض","درّب الـ head الأول بعدين fine-tune الموديل كله","اعرض Confusion matrix وأمثلة"],out:"موديل تشخيص أوراق النباتات"},
+"6-6":{data:"نص كتاب (Project Gutenberg) أو نص عربي",tools:"PyTorch",steps:["حوّل الحروف لأرقام","اعمل sequences بطول ثابت","درّب LSTM يتوقع الحرف الجاي","ولّد نص بـ temperature مختلفة"],out:"نماذج نصوص متولدة"},
+"6-7":{data:"نص عربي (مقالات أو شعر قديم)",tools:"PyTorch",steps:["اعمل character أو BPE tokenizer","ابني self-attention head واحد ثم multi-head","ركّب Transformer blocks مع residual و LayerNorm","درّب وولّد نص"],out:"Mini-GPT شغال"},
+"7-0":{data:"فيديو شارع (من YouTube أو مصور)",tools:"Ultralytics YOLO, OpenCV",steps:["شغّل YOLO pretrained على الفريمات","فلتر الكلاس car بس","ضيف tracking علشان ماتعدّش العربية مرتين","ارسم خط وعدّ العربيات اللي عدّته"],out:"فيديو عليه العدد"},
+"7-1":{data:"داتا تعليقات عربية (زي HARD أو ASTD)",tools:"Hugging Face, AraBERT",steps:["نضّف النص العربي (تشكيل، تطويل، روابط)","baseline بـ TF-IDF + Logistic Regression","Fine-tune AraBERT","قارن النتيجة وجرّب جمل من عندك"],out:"موديل مشاعر عربي"},
+"7-2":{data:"ملفات PDF عندك (كتب، محاضرات)",tools:"LangChain أو LlamaIndex, Vector DB",steps:["قسّم الملفات لـ chunks","حوّلها لـ embeddings وخزّنها في Chroma أو FAISS","عند السؤال: هات أقرب chunks وابعتها للـ LLM","اعمل واجهة بـ Streamlit وقيّم الإجابات"],out:"Chatbot بيجاوب من ملفاتك"},
+"7-3":{data:"Fashion-MNIST",tools:"PyTorch",steps:["ابني Generator و Discriminator","درّبهم بالتبادل","احفظ صور كل كام epoch","لاحظ mode collapse وجرّب تحله"],out:"GIF بيوضح تطور الصور"},
+"7-4":{data:"CartPole (Gymnasium)",tools:"Gymnasium, PyTorch",steps:["افهم الـ state والـ actions والـ reward","نفّذ DQN مع replay buffer","ارسم الـ reward مع الحلقات","سجّل فيديو للـ agent بعد التدريب"],out:"Agent بيوازن العصاية"},
+"7-5":{data:"Store Sales (Kaggle) أو استهلاك كهربا",tools:"statsmodels, Prophet",steps:["حلّل الـ trend والـ seasonality","جرّب ARIMA و Prophet","اعمل موديل ML بـ lag features","قارن بـ backtesting"],out:"توقع الشهور الجاية + مقارنة"},
+"7-6":{data:"Cora",tools:"PyTorch Geometric",steps:["افهم الـ graph: nodes و edges و features","baseline: MLP بيتجاهل الـ edges","درّب GCN","قارن الـ accuracy واشرح الفرق"],out:"مقارنة MLP و GCN"},
+"7-7":{data:"فيديوهات عربي قصيرة",tools:"Whisper",steps:["طلّع الصوت من الفيديو بـ ffmpeg","فرّغه بـ Whisper","قارن أحجام الموديلات في الدقة والسرعة","طلّع ملف ترجمة .srt"],out:"ملفات ترجمة جاهزة"},
+"8-0":{data:"موديل Churn من المرحلة 5",tools:"FastAPI, Pydantic",steps:["حمّل الموديل عند تشغيل السيرفر","اعمل endpoint اسمه /predict بياخد JSON","Validation بـ Pydantic","جرّبه من /docs"],out:"API شغالة محليًا"},
+"8-1":{data:"الـ API اللي فاتت",tools:"Docker",steps:["اكتب Dockerfile","ابني الـ image وشغّلها","docker-compose لو فيه أكتر من خدمة","ارفع الـ image على Docker Hub"],out:"Image على Docker Hub"},
+"8-2":{data:"Telco Churn",tools:"MLflow",steps:["سجّل params و metrics لكل run","جرّب 20 تجربة بموديلات وإعدادات مختلفة","قارن في الـ MLflow UI","سجّل أحسن موديل في الـ Model Registry"],out:"MLflow experiment منظم"},
+"8-3":{data:"أي مشروع سابق",tools:"DVC, Git",steps:["تتبّع الداتا بـ DVC بدل Git","اعمل dvc.yaml فيه stages: تحضير، تدريب، تقييم","غيّر parameter وشغّل dvc repro","قارن النتايج بـ dvc metrics diff"],out:"Pipeline قابل لإعادة التشغيل"},
+"8-4":{data:"موديل الصور أو الـ API",tools:"Hugging Face Spaces أو AWS",steps:["اعمل واجهة بـ Gradio","ارفعها على HF Spaces (مجاني)","جرّب كمان تنشر الـ Docker image على خدمة كلاود","حط اللينك في README"],out:"لينك شغال للناس"},
+"8-5":{data:"داتا الموديل + داتا جديدة متغيرة",tools:"Evidently",steps:["قسّم الداتا لـ reference و current","غيّر توزيع عمود عن قصد","اعمل Data drift report","حدّد قاعدة: إمتى نعيد التدريب"],out:"تقرير HTML للـ drift"},
+"8-6":{data:"مشروع الـ API",tools:"GitHub Actions, pytest",steps:["اكتب tests للـ preprocessing والـ API","اعمل workflow يشغّل الـ tests مع كل push","ضيف linting (ruff)","ابني Docker image تلقائيًا لو الـ tests نجحت"],out:"Pipeline أخضر على GitHub"},
+"9-0":{data:"مسابقات Getting Started",tools:"Kaggle",steps:["ابدأ بـ Titanic ثم House Prices ثم Digit Recognizer","اقرأ أعلى 3 notebooks في كل مسابقة","اكتب notebook بأسلوبك وانشره","حسّن الـ score وسجّل اللي اتعلمته"],out:"3 notebooks منشورة"},
+"9-1":{data:"أحسن مشاريعك",tools:"GitHub Pages أو Streamlit",steps:["اختار أقوى 3 - 5 مشاريع end-to-end","وحّد شكل الـ README","اعمل صفحة شخصية فيها صورة ولينك لكل مشروع","اكتب لكل مشروع المشكلة والنتيجة بالأرقام"],out:"موقع Portfolio"},
+"9-2":{data:"paper تختاره (مثلًا ResNet)",tools:"PyTorch",steps:["اقرأ الـ abstract والرسومات الأول","اقرأ الـ method بالتفصيل","نفّذ الموديل على داتا صغيرة","اكتب مقال يشرح الفكرة ونتايجك"],out:"Repo + مقال"},
+"9-3":{data:"اللي اتعلمته",tools:"Medium أو LinkedIn",steps:["اختار 5 مواضيع فهمتها كويس","اكتب كل مقال بأمثلة وكود","انشر واحد كل أسبوعين","شارك في نقاشات وكومنتات"],out:"5 مقالات منشورة"},
+"9-4":{data:"أسئلة مقابلات",tools:"LeetCode, Pramp",steps:["راجع أشهر 50 سؤال ML نظري","ذاكر ML System Design (recommendation, search)","حل مسائل coding بانتظام","اعمل 3 mock interviews"],out:"جاهزية للمقابلات"}
+};
+
+// تفاصيل مشروع كل مرحلة
+const SP = [
+{goal:"تربط كل أساسيات البرمجة في مشروع حقيقي صغير",data:"أي ملف CSV (مثلًا مصروفاتك الشهرية)",tools:"Python, csv, Git",steps:["اقرأ الملف بمكتبة csv من غير Pandas","احسب: المجموع، المتوسط، أكبر وأصغر قيمة لكل فئة","اكتب النتايج في ملف report.txt","قسّم الكود لـ functions و Class واحد على الأقل","ارفعه على GitHub مع README"],out:"Repo فيه سكريبت + تقرير",bonus:"خلّي السكريبت ياخد اسم الملف من الـ command line"},
+{goal:"تفهم الرياضيات اللي ورا أول موديل ML",data:"داتا بسيطة: مساحة البيت والسعر",tools:"NumPy, Matplotlib",steps:["اكتب المعادلة y = wx + b ودالة الـ MSE","اشتق الـ gradient بإيدك","نفّذ Gradient Descent بـ NumPy","حل نفس المشكلة بالـ Normal equation (جبر خطي)","قارن الحلين وارسم الخط"],out:"Notebook فيه المعادلات والكود",bonus:"اشرح كل خطوة بكلامك كأنك بتعلّمها لحد"},
+{goal:"تحكي قصة من الداتا بالأرقام والرسومات",data:"House Prices (Kaggle)",tools:"Pandas, Seaborn, Plotly",steps:["نضّف الداتا ووثّق القرارات","حلّل السعر: توزيعه والقيم الشاذة","حدّد أكتر 10 عوامل مرتبطة بالسعر","اعمل رسومات لكل استنتاج","اكتب ملخص للنتايج في أول الـ notebook"],out:"Notebook EDA منشور على Kaggle",bonus:"اعمل Dashboard بـ Plotly للنتايج"},
+{goal:"تبني workflow الـ ML الصح من أوله لآخره",data:"Titanic أو Adult Income",tools:"scikit-learn",steps:["قسّم الداتا train/test من الأول","اعمل ColumnTransformer + Pipeline","قيّم 3 موديلات بالـ Cross-Validation","Tuning لأحسن واحد بـ GridSearchCV","قيّم مرة واحدة على الـ test واحفظ الموديل"],out:"Pipeline محفوظ + تقرير metrics",bonus:"اكتب function predict بتاخد بيانات راكب جديد"},
+{goal:"تقارن الموديلات على مشكلتين حقيقيتين",data:"House Prices + Telco Customer Churn",tools:"scikit-learn, XGBoost, LightGBM, SHAP",steps:["Baseline بسيط لكل مشكلة","درّب Linear و Tree و Random Forest و Gradient Boosting","Tuning بـ Optuna","جدول مقارنة بالـ metrics والوقت","فسّر أحسن موديل بـ SHAP"],out:"Notebook لكل مشكلة + جدول مقارنة",bonus:"اعمل submission على Kaggle وسجّل ترتيبك"},
+{goal:"تحوّل داتا من غير labels لقرارات بزنس",data:"Online Retail (UCI)",tools:"Pandas, scikit-learn",steps:["احسب RFM لكل عميل (Recency, Frequency, Monetary)","اعمل Scaling وجرّب K-Means و GMM","اختار عدد الشرائح بالـ Silhouette","اعرض الشرائح بـ PCA في 2D","اكتب وصف وتوصية تسويقية لكل شريحة"],out:"تقرير Segmentation",bonus:"ضيف Market Basket لكل شريحة"},
+{goal:"تدرّب موديل Deep Learning وتنشره",data:"PlantVillage أو أي داتا صور",tools:"PyTorch, Gradio",steps:["جهّز الداتا مع Augmentation","Transfer learning من ResNet أو EfficientNet","تابع التدريب بـ TensorBoard","حلّل الأخطاء بـ Confusion matrix","اعمل واجهة Gradio وارفعها على HF Spaces"],out:"Demo أونلاين بيصنّف الصور",bonus:"ضيف Grad-CAM يوضّح الموديل بص على إيه"},
+{goal:"تتعمق في تخصص وتبني منتج كامل",data:"حسب التخصص (ملفاتك، فيديوهات، تعليقات…)",tools:"Hugging Face, LangChain, YOLO… حسب التخصص",steps:["حدّد مشكلة حقيقية ومستخدم ليها","اعمل baseline بسيط الأول","ابني الحل الأساسي بالتقنيات المتقدمة","قيّم بأرقام واضحة","اعمل واجهة وانشره"],out:"منتج شغال + مقال يشرح الرحلة",bonus:"اعرضه على ناس حقيقية وخد feedback"},
+{goal:"تشغّل موديل في بيئة إنتاج حقيقية",data:"موديل من مرحلة سابقة",tools:"FastAPI, Docker, MLflow, Evidently, GitHub Actions",steps:["تتبّع التدريب بـ MLflow وسجّل الموديل","اعمل API بـ FastAPI","حطها في Docker","CI/CD بيشغّل tests ويبني الـ image","انشرها على الكلاود وضيف monitoring للـ drift"],out:"API منشورة بلينك + architecture diagram",bonus:"Retraining تلقائي لما يحصل drift"},
+{goal:"تجهّز نفسك لأول شغل",data:"كل مشاريعك",tools:"GitHub, LinkedIn, موقع شخصي",steps:["اختار أحسن 3 - 5 مشاريع","وحّد الـ README وضيف demos","اكتب CV فيه نتيجة كل مشروع بالأرقام","حدّث LinkedIn وانشر عن مشاريعك","قدّم وتدرّب على المقابلات"],out:"Portfolio + CV جاهزين",bonus:"شارك في open source في مكتبة بتستخدمها"}
+];
+
+</script>
+<script>
+const KEY="ml-roadmap-v3", NKEY="ml-roadmap-notes-v1";
+let S={}, N={};
+try{S=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){}
+try{N=JSON.parse(localStorage.getItem(NKEY)||"{}")||{}}catch(e){}
+// نقل التقدم من النسخة القديمة (موضوع كامل = كل نقطه)
+try{const old=JSON.parse(localStorage.getItem("ml-roadmap-done-v2")||"null");
+  if(old&&!localStorage.getItem(KEY)){Object.keys(old).forEach(k=>{const[i,j]=k.split("-").map(Number);if(STAGES[i]&&STAGES[i].topics[j])STAGES[i].topics[j][1].forEach((_,x)=>S[i+"."+j+".s."+x]=1)});save();}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function saveN(){try{localStorage.setItem(NKEY,JSON.stringify(N))}catch(e){}}
+
+const CHECK='<svg viewBox="0 0 12 12"><path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const $=id=>document.getElementById(id);
+function el(t,c,x){const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+
+// ---------- مفاتيح وعدّ ----------
+function topicKeys(i,j){const t=STAGES[i].topics[j],k=[];t[1].forEach((_,x)=>k.push(i+"."+j+".s."+x));const p=PD[i+"-"+j];if(p)p.steps.forEach((_,x)=>k.push(i+"."+j+".p."+x));return k}
+function capKeys(i){return SP[i].steps.map((_,x)=>i+".x."+x)}
+function stageKeys(i){let k=[];STAGES[i].topics.forEach((_,j)=>k=k.concat(topicKeys(i,j)));return k.concat(capKeys(i))}
+function frac(keys){const d=keys.filter(k=>S[k]).length;return{d,t:keys.length,p:keys.length?d/keys.length:0}}
+function pct(f){return Math.round(f.p*100)}
+function ring(p,size,stroke,col){const r=(size-stroke)/2,c=2*Math.PI*r;return'<svg viewBox="0 0 '+size+' '+size+'"><circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="#ebe6dc" stroke-width="'+stroke+'"/><circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+(c*(1-p))+'" style="transition:stroke-dashoffset .4s"/></svg>'}
+
+// ---------- الخريطة ----------
+const OFF=[0,170,0,-170];
+function buildMap(){
+  const tr=$("track");tr.innerHTML="";
+  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");svg.setAttribute("class","path");tr.appendChild(svg);
+  STAGES.forEach((s,i)=>{
+    const st=el("div","station");st.style.setProperty("--c",s.c);
+    st.style.setProperty("--dx","0px");st.style.setProperty("--dir",i%2?"row-reverse":"row");
+    const node=el("div","node");
+    const f=frac(stageKeys(i));
+    const hex=el("button","hex"+(f.p===1?" full":""));hex.type="button";hex.dataset.i=i;
+    hex.innerHTML='<div class="num">STAGE '+String(i+1).padStart(2,"0")+'</div><h2></h2><div class="hb"><i style="width:'+pct(f)+'%"></i></div><div class="hp">'+pct(f)+'%</div>';
+    hex.querySelector("h2").textContent=s.t;
+    hex.onclick=()=>go(i,0);
+    const info=el("div","info");
+    const tb=el("b",null,s.t);info.appendChild(tb);
+    info.appendChild(document.createTextNode(s.topics.length+" مواضيع · "+s.d));
+    info.appendChild(el("br"));
+    info.appendChild(el("span","pill",s.lvl));
+    info.appendChild(el("br"));
+    const op=el("button","open","افتحي المرحلة ←");op.type="button";op.onclick=()=>go(i,0);info.appendChild(op);
+    node.append(hex,info);st.appendChild(node);tr.appendChild(st);
+  });
+  requestAnimationFrame(drawPath);
+  // لوحة التقدم
+  let all=[],subs=[],projs=[];STAGES.forEach((s,i)=>{all=all.concat(stageKeys(i));s.topics.forEach((t,j)=>{t[1].forEach((_,x)=>subs.push(i+"."+j+".s."+x));const p=PD[i+"-"+j];if(p)p.steps.forEach((_,x)=>projs.push(i+"."+j+".p."+x))});projs=projs.concat(capKeys(i))});
+  const fa=frac(all),fs=frac(subs),fp=frac(projs);
+  let topicsDone=0,topicsAll=0;STAGES.forEach((s,i)=>s.topics.forEach((_,j)=>{topicsAll++;if(frac(topicKeys(i,j)).p===1)topicsDone++}));
+  $("ring").innerHTML=ring(fa.p,108,10,"#1f8a5b")+'<div class="v"><div>'+pct(fa)+'%<small>الإجمالي</small></div></div>';
+  $("dstats").innerHTML='<div><b>'+fs.d+' / '+fs.t+'</b><span>نقطة ذاكرتيها</span></div><div><b>'+fp.d+' / '+fp.t+'</b><span>خطوة مشاريع</span></div><div><b>'+topicsDone+' / '+topicsAll+'</b><span>موضوع خلص</span></div>';
+}
+function drawPath(){
+  const tr=$("track"),svg=tr.querySelector("svg.path");if(!svg)return;
+  if(getComputedStyle(svg).display==="none")return;
+  const r0=tr.getBoundingClientRect();const pts=[...tr.querySelectorAll(".hex")].map(h=>{const r=h.getBoundingClientRect();return[r.left+r.width/2-r0.left,r.top+r.height/2-r0.top]});
+  let d="";pts.forEach((p,k)=>{if(!k){d="M"+p[0]+","+p[1];return}const q=pts[k-1],my=(q[1]+p[1])/2;d+=" C"+q[0]+","+my+" "+p[0]+","+my+" "+p[0]+","+p[1]});
+  svg.innerHTML='<path d="'+d+'" fill="none" stroke="#d6d0c3" stroke-width="5" stroke-dasharray="2 14" stroke-linecap="round"/>';
+}
+
+// ---------- صفحة المرحلة ----------
+let cur={i:0,j:0};
+function go(i,j){cur={i,j};location.hash="stage-"+(i+1);render();window.scrollTo(0,0)}
+function render(){
+  const h=location.hash.replace("#","");const m=h.match(/^stage-(\d+)$/);
+  if(!m){$("stageView").classList.add("hidden");$("mapView").classList.remove("hidden");buildMap();return}
+  const i=Math.min(Math.max(+m[1]-1,0),STAGES.length-1);if(cur.i!==i)cur={i,j:0};
+  $("mapView").classList.add("hidden");$("stageView").classList.remove("hidden");
+  const s=STAGES[i];document.documentElement.style.setProperty("--c",s.c);
+  $("sNum").textContent="المرحلة "+(i+1)+" من "+STAGES.length;$("sTitle").textContent=s.t;
+  $("prevS").disabled=i===0;$("nextS").disabled=i===STAGES.length-1;
+  renderAside();renderPanel();refreshStage();
+}
+function refreshStage(){const f=frac(stageKeys(cur.i));$("sPct").textContent=pct(f)+"%";$("sBar").style.width=pct(f)+"%"}
+function renderAside(){
+  const i=cur.i,s=STAGES[i],a=$("aside");a.innerHTML="";
+  const meta=el("div","meta");meta.innerHTML="<b>"+s.lvl+"</b> · ⏱ "+s.d+"<br>"+s.topics.length+" مواضيع + مشروع المرحلة";a.appendChild(meta);
+  s.topics.forEach((t,j)=>{
+    const f=frac(topicKeys(i,j));
+    const b=el("button","ti"+(cur.j===j?" active":""));b.type="button";
+    b.innerHTML='<div class="mini">'+ring(f.p,30,4,f.p===1?"#1f8a5b":s.c)+'<span>'+(f.p===1?"✓":pct(f))+'</span></div><div class="nm"></div>';
+    b.querySelector(".nm").textContent=t[0];const sm=el("small",null,t[1].length+" نقطة + مشروع");b.querySelector(".nm").appendChild(sm);
+    b.onclick=()=>{cur.j=j;renderAside();renderPanel();if(innerWidth<860)$("panel").scrollIntoView({behavior:"smooth"})};
+    a.appendChild(b);
+  });
+  const f=frac(capKeys(i));
+  const c=el("button","ti cap"+(cur.j==="cap"?" active":""));c.type="button";
+  c.innerHTML='<div class="mini">'+ring(f.p,30,4,f.p===1?"#1f8a5b":s.c)+'<span>🏆</span></div><div class="nm">مشروع المرحلة<small>'+SP[i].steps.length+' خطوات</small></div>';
+  c.onclick=()=>{cur.j="cap";renderAside();renderPanel()};a.appendChild(c);
+  const act=a.querySelector(".active");if(act&&innerWidth<860)act.scrollIntoView({block:"nearest",inline:"center"});
+}
+function item(key,text,num){
+  const b=el("button","ci"+(S[key]?" on":""));b.type="button";
+  if(num!=null)b.appendChild(el("span","n",String(num)));
+  const bx=el("span","bx");bx.innerHTML=CHECK;b.appendChild(bx);b.appendChild(el("span","tx",text));
+  b.onclick=()=>{S[key]=S[key]?0:1;if(!S[key])delete S[key];b.classList.toggle("on",!!S[key]);save();afterCheck()};
+  return b;
+}
+function sectionHead(title,keys){
+  const h=el("div","sh");h.appendChild(el("h4",null,title));
+  const all=el("button",null,"علّمي الكل");all.type="button";all.onclick=()=>{keys.forEach(k=>S[k]=1);save();renderPanel();afterCheck()};
+  const none=el("button",null,"شيلي الكل");none.type="button";none.onclick=()=>{keys.forEach(k=>delete S[k]);save();renderPanel();afterCheck()};
+  h.append(all,none);return h;
+}
+function facts(p){const f=el("div","facts");[["📂 الداتا",p.data],["🧰 الأدوات",p.tools]].forEach(x=>{const d=el("div");d.appendChild(el("b",null,x[0]));d.appendChild(document.createTextNode(x[1]));f.appendChild(d)});return f}
+let lastTopicFull=null;
+function afterCheck(){
+  refreshStage();
+  // تحديث شريط تقدم البانل
+  const keys=cur.j==="cap"?capKeys(cur.i):topicKeys(cur.i,cur.j),f=frac(keys);
+  const pb=document.querySelector(".panel .pbar i");if(pb)pb.style.width=pct(f)+"%";
+  const pt=document.querySelector(".panel .ptxt");if(pt)pt.textContent=f.d+" من "+f.t+" خلصتيهم · "+pct(f)+"%";
+  renderAside();
+  if(f.p===1&&lastTopicFull!==cur.i+"-"+cur.j){lastTopicFull=cur.i+"-"+cur.j;toast("🎉 برافو! خلصتي "+(cur.j==="cap"?"مشروع المرحلة":"«"+STAGES[cur.i].topics[cur.j][0]+"»"))}
+  if(f.p<1&&lastTopicFull===cur.i+"-"+cur.j)lastTopicFull=null;
+}
+function renderPanel(){
+  const i=cur.i,s=STAGES[i],P=$("panel");P.innerHTML="";
+  const isCap=cur.j==="cap";
+  const keys=isCap?capKeys(i):topicKeys(i,cur.j),f=frac(keys);
+  lastTopicFull=f.p===1?i+"-"+cur.j:null;
+  const ph=el("div","ph");const tw=el("div");tw.style.flex="1";
+  tw.appendChild(el("div","kick",isCap?"🏆 مشروع المرحلة":"الموضوع "+(cur.j+1)+" من "+s.topics.length));
+  tw.appendChild(el("h3",null,isCap?s.project:s.topics[cur.j][0]));ph.appendChild(tw);P.appendChild(ph);
+  const pb=el("div","pbar");pb.innerHTML='<i style="width:'+pct(f)+'%"></i>';P.appendChild(pb);
+  P.appendChild(el("div","ptxt",f.d+" من "+f.t+" خلصتيهم · "+pct(f)+"%"));
+
+  if(!isCap){
+    const t=s.topics[cur.j],sk=t[1].map((_,x)=>i+"."+cur.j+".s."+x);
+    const sec=el("div","sec");sec.appendChild(sectionHead("📌 checklist المذاكرة",sk));
+    const cl=el("div","cl");t[1].forEach((x,k)=>cl.appendChild(item(sk[k],x)));sec.appendChild(cl);P.appendChild(sec);
+    const p=PD[i+"-"+cur.j];
+    if(p){
+      const pk=p.steps.map((_,x)=>i+"."+cur.j+".p."+x);
+      const sec2=el("div","sec");const box=el("div","proj");
+      box.appendChild(sectionHead("🛠 مشروع الموضوع",pk));
+      box.appendChild(el("div","pt",t[2]));box.appendChild(facts(p));
+      const st=el("div","steps");p.steps.forEach((x,k)=>st.appendChild(item(pk[k],x,k+1)));box.appendChild(st);
+      const o=el("div","out");o.innerHTML="<b>✅ الناتج في الآخر:</b> ";o.appendChild(document.createTextNode(p.out));box.appendChild(o);
+      sec2.appendChild(box);P.appendChild(sec2);
+    }
+  }else{
+    const c=SP[i],ck=capKeys(i);
+    const sec=el("div","sec");const box=el("div","proj");
+    box.appendChild(el("div","pt","🎯 "+c.goal));box.appendChild(facts(c));
+    box.appendChild(sectionHead("🪜 خطوات التنفيذ",ck));
+    const st=el("div","steps");c.steps.forEach((x,k)=>st.appendChild(item(ck[k],x,k+1)));box.appendChild(st);
+    const o=el("div","out");o.innerHTML="<b>✅ الناتج:</b> ";o.appendChild(document.createTextNode(c.out));box.appendChild(o);
+    const bo=el("div","out");bo.innerHTML="<b>⭐ لو عايزة تزوّدي:</b> ";bo.appendChild(document.createTextNode(c.bonus));box.appendChild(bo);
+    sec.appendChild(box);P.appendChild(sec);
+    const rs=el("div","sec");rs.appendChild(el("h4",null,"📚 مصادر المرحلة"));const rl=el("div","res");
+    rl.innerHTML=s.res.map(r=>r[1]?'<a href="'+r[1]+'" target="_blank" rel="noopener">'+r[0]+'</a>':r[0]).join(" · ");rs.appendChild(rl);P.appendChild(rs);
+  }
+  // ملاحظات
+  const nk=i+"."+cur.j;const ns=el("div","sec notes");ns.appendChild(el("h4",null,"📝 ملاحظاتك"));
+  const ta=el("textarea");ta.placeholder="اكتبي هنا اللي وقفتي عنده، لينكات، أسئلة…";ta.value=N[nk]||"";
+  ta.oninput=()=>{N[nk]=ta.value;if(!ta.value)delete N[nk];saveN()};ns.appendChild(ta);P.appendChild(ns);
+  // تنقل
+  const nav=el("div","pnav");
+  const order=s.topics.map((_,j)=>j).concat(["cap"]);const pos=order.indexOf(cur.j);
+  if(pos>0){const b=el("button",null,"→ "+(order[pos-1]==="cap"?"مشروع المرحلة":s.topics[order[pos-1]][0]));b.type="button";b.onclick=()=>{cur.j=order[pos-1];renderAside();renderPanel();scrollTo(0,0)};nav.appendChild(b)}
+  let nb;
+  if(pos<order.length-1){nb=el("button","nx",(order[pos+1]==="cap"?"مشروع المرحلة":s.topics[order[pos+1]][0])+" ←");nb.onclick=()=>{cur.j=order[pos+1];renderAside();renderPanel();scrollTo(0,0)}}
+  else if(i<STAGES.length-1){nb=el("button","nx","المرحلة الجاية: "+STAGES[i+1].t+" ←");nb.onclick=()=>go(i+1,0)}
+  if(nb){nb.type="button";nav.appendChild(nb)}
+  P.appendChild(nav);
+}
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("show"),2600)}
+
+$("back").onclick=()=>{location.hash="map"};
+$("prevS").onclick=()=>{if(cur.i>0)go(cur.i-1,0)};
+$("nextS").onclick=()=>{if(cur.i<STAGES.length-1)go(cur.i+1,0)};
+$("resume").onclick=()=>{
+  for(let i=0;i<STAGES.length;i++){for(let j=0;j<STAGES[i].topics.length;j++){if(frac(topicKeys(i,j)).p<1){cur={i,j};location.hash="stage-"+(i+1);render();scrollTo(0,0);return}}if(frac(capKeys(i)).p<1){cur={i,j:"cap"};location.hash="stage-"+(i+1);render();return}}
+  toast("🎉 خلصتي الرود ماب كلها!");
+};
+$("reset").onclick=()=>{
+  const b=$("reset");if(b.dataset.c){S={};save();buildMap();b.textContent="ابدأ من الأول";delete b.dataset.c;toast("اتمسح التقدم")}
+  else{b.dataset.c=1;b.textContent="متأكدة؟ دوسي تاني للمسح";setTimeout(()=>{b.textContent="ابدأ من الأول";delete b.dataset.c},3000)}
+};
+window.addEventListener("hashchange",render);
+window.addEventListener("resize",drawPath);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawPath);
+render();
+
+</script>
+</body>
+</html>
